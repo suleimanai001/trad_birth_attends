@@ -1,0 +1,1493 @@
+---
+title: "TBAs Survey in Katsina and Niger State"
+author: "Katsina and Niger State Team Leads"
+date: "15 November 2022"
+output:
+  word_document: default
+subtitle: Preliminary Report
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo           = FALSE,    # to hide codes 
+                      warning        = FALSE,    # to hide warning signs
+                      message        = FALSE,    # to hide messages
+                      error          = TRUE,     # show error
+                      fig.width      = 8,        # Figure width
+                      fig.height     = 8,        # Figure height
+                      fig.topcaption = TRUE      # show figure titles on top of plot
+                      )
+```
+
+```{r Load Packages, include=FALSE}
+pacman::p_load (
+  rio,          # for importing data/exporting data
+  here,         # for locating files
+  janitor,      # for data cleaning  
+  lubridate,    # for date cleaning  
+  epikit,       # creating age categories
+  gtsummary,    # creating tables  
+  scales,       # percents in tables  
+  flextable,    # for making pretty tables
+  tidyverse,    # for data management
+  gghighlight,  # for highlighting plots
+  skimr,        #
+  RColorBrewer, #
+  stringr,      # working with characters
+  scales,
+  ggExtra,      # for data management and visualization
+  apyramid,     # for age/sex pyramids
+  viridis,      # for color-blind friendly color scales
+  tsibble      # for epiweeks and other time series analyses
+)
+```
+
+
+```{r Import tba data, include=FALSE}
+## Importing the raw Data
+tba_raw <- import(here("tbas_20221103.xlsx" ))
+```
+
+
+```{r Clean linelist, include=FALSE}
+
+# Cleaning the Data
+
+tba <- tba_raw %>% 
+  clean_names() %>%              # Automatically clean column names
+  rename(                        # manually clean column names done for each question for both English and Hausa Versions  
+    # New              Old
+    agee               =  x2_age_of_tba,
+    ageh               =  x2_shekarar_unguwar_zoma_nawa,
+    
+    statee             =  x3_state_of_tba,
+    stateh             =  x3_jahar_unguwar_zoma,
+    
+    lgaek              =  x4_lga_of_tba_in_katsina_state,
+    lgaen              =  x4_lga_of_tba_in_niger_state,
+    lgahk              =  x4_karamar_hukumar_unguwar_zoma_a_katsina,
+    lgahn              =  x4_karamar_hukumar_unguwar_zoma_a_niger,
+    
+    warde              =  x5_ward_of_tba_residence,
+    wardh              =  x5_wace_gunduma_ward_unguwar_zoma_ke_zama,
+    
+    settlemente        =  x6_settlement_of_tba_residence,
+    settlementh        =  x6_wane_gari_unguwar_zoma_ke_zama,
+    
+    educatione         =  x7_what_is_your_level_of_education,
+    educationh         =  x7_mene_matakin_karatun_ki,
+    
+    service_yearse     =  x8_how_long_have_you_been_providing_services_as_a_tba,
+    service_yearsh     =  x8_tsawon_wane_lokaci_kika_dauka_kina_aiki_a_matsayin_ma_aikaciyar_unguwar_zoma_tba,
+    
+    wards_covere       =  x9_how_many_wards_do_you_cover,
+    wards_coverh       =  x9_gundumomi_nawa_kike_aiki,
+    
+    settlement_covere  =  x10_how_many_settlements_do_you_cover,
+    settlement_coverh  =  x10_akalla_garuruwa_nawa_kike_zuwa_aikin_unguwar_zoma,
+    
+    # Question 11: Where_do_you_offer_your_services_as_a_tba?    
+    services_offere    =  x11a_where_do_you_offer_your_services_as_a_tba,
+    services_offerh    =  x11a_a_ina_kike_aikin_ki_na_unguwan_zomanci,
+    hf_tiere           =  x11b_if_health_facility_what_tier_of_health_facility,
+    hf_tierh           =  x11b_idan_a_asibiti_wace_irin_asibiti,
+    hf_typee           =  x11c_what_type_of_health_facility,
+    hf_typeh           =  x11c_idan_a_asibiti_wa_ke_kula_da_asibitin,
+    
+# Question 12: How_do_you_travel_for_work?    
+    travel_work_mtrce  =  x12a_how_do_you_travel_for_work_motorcycle,
+    travel_work_bikee  =  x12a_how_do_you_travel_for_work_bike_bicycle,
+    travel_work_walke  =  x12a_how_do_you_travel_for_work_walk,
+    travel_work_pcare  =  x12a_how_do_you_travel_for_work_car_private,
+    travel_work_ccare  =  x12a_how_do_you_travel_for_work_public_transport_car,
+    travel_work_mtrch  =  x12a_ya_kike_zuwa_wajen_aiki_kabu_kabu,
+    travel_work_bikeh  =  x12a_ya_kike_zuwa_wajen_aiki_keke,
+    travel_work_walkh  =  x12a_ya_kike_zuwa_wajen_aiki_tafiya_kasa,
+    travel_work_pcarh  =  x12a_ya_kike_zuwa_wajen_aiki_motar_gida,
+    travel_work_ccarh  =  x12a_ya_kike_zuwa_wajen_aiki_motar_kasuwa,
+    
+#Question 13: If_given_the_options_would_you_prefer_to_travel_to_other_areas_e_g_other_neighborhoods_to_do_your_work?
+prefer_travele     =  x13a_if_given_the_options_would_you_prefer_to_travel_to_other_areas_e_g_other_neighborhoods_to_do_your_work,
+prefer_travelh     =  x13a_idan_an_baki_zabi_ke_fi_son_ki_je_wasu_wurare_ko_garuruwa_kiyi_aikin_ki,
+prefer_travel_whre =  x13b_what_things_would_you_require_to_travel,
+prefer_travel_whrh =  x13b_me_kike_bukata_kiyi_tafiya,
+    
+##Question 14: How_did_you_acquire_your_skills_as_a_tba?
+skills_familye     =  x14a_how_did_you_acquire_your_skills_as_a_tba_family_practice_from_mother_or_other_family_member,
+skills_familyh     =  x14a_ta_yaya_kika_koyi_aikin_unguwar_zoma_sanaar_gidanmu_ce_daga_uwa_ko_wata_yar_uwa,
+skills_schoole     =  x14a_how_did_you_acquire_your_skills_as_a_tba_learnt_at_school,
+skills_schoolh     =  x14a_ta_yaya_kika_koyi_aikin_unguwar_zoma_na_koya_a_makaranta,
+skills_other_tbae  =  x14a_how_did_you_acquire_your_skills_as_a_tba_learnt_from_other_birth_attendants,
+skills_other_tbah  =  x14a_ta_yaya_kika_koyi_aikin_unguwar_zoma_na_koya_daga_wasu_unguwan_zomomi,
+skills_othere      =  x14a_how_did_you_acquire_your_skills_as_a_tba_others_specify,
+skills_otherh      =  x14a_ta_yaya_kika_koyi_aikin_unguwar_zoma_wata_hanya_daban_fadi_hanyar,
+    
+ #Question 15: Have_you_had_additional_capacity_building_training_opportunities_to_improve_your_skill?
+add_capacity_be    =  x15a_have_you_had_additional_capacity_building_training_opportunities_to_improve_your_skill, 
+add_capacity_bh    =  x15a_ke_taba_samun_karin_karatu_ko_dama_ta_horo_akan_kwarewar_aikin_ki,
+add_train_whene    =  x15c_if_yes_when_did_you_attend_this_training,
+add_train_whenh    =  x15c_yaushe_kika_yi_wannan_karin_karatun,
+add_train_no_ye    =  x15d_if_no_why,
+add_train_no_yh    =  x15d_idan_aa_me_yasa,
+add_train_othere   =  x15e_other,
+add_train_otherh   =  x15e_fadi_me_yasa,
+    
+
+ # Question 16: Would_you_be_willing_to_take_on_additional_trainings_should_you_be_given_the_opportunity? 
+will_add_traine    =  x16a_would_you_be_willing_to_take_on_additional_trainings_should_you_be_given_the_opportunity,
+will_add_trainh    =  x16a_zaki_so_ki_kara_samun_horaswa_idan_aka_baki_dama,
+
+
+# Question 17:  who_in_the_household_reaches_out_to_you_for_your_services?   
+hh_rout_pwomane    =  x17a_who_in_the_household_reaches_out_to_you_for_your_services_pregnant_woman,
+hh_rout_pwomanh    =  x17a_wanene_a_cikin_magidanta_yafi_zuwa_ya_same_ki_akan_aikin_ki_mai_juna_biyu,
+hh_rout_pwhsbnde   =  x17a_who_in_the_household_reaches_out_to_you_for_your_services_pregnant_womans_husband,
+hh_rout_pwhsbndh   =  x17a_wanene_a_cikin_magidanta_yafi_zuwa_ya_same_ki_akan_aikin_ki_mijin_mai_juna_biyu,
+hh_rout_pwmoinlwe  =  x17a_who_in_the_household_reaches_out_to_you_for_your_services_pregnant_womans_mother_in_law,
+hh_rout_pwmoinlwh  =  x17a_wanene_a_cikin_magidanta_yafi_zuwa_ya_same_ki_akan_aikin_ki_surukar_mai_juna_biyu,
+hh_rout_othre      =  x17a_who_in_the_household_reaches_out_to_you_for_your_services_other_specify,
+hh_rout_othrh      =  x17a_wanene_a_cikin_magidanta_yafi_zuwa_ya_same_ki_akan_aikin_ki_wani_daban_fade_shi,
+hh_rout_otherse    =  x17b_specify,
+hh_rout_othersh    =  x17b_wane,
+  
+# Question 18: How_do_you_document_the_services_that_you_provide_the_women?
+doc_ser_notebooke  =  x18_how_do_you_document_the_services_that_you_provide_the_women_in_a_notebook,
+doc_ser_notebookh  =  x18_ta_yaya_kike_adana_ayyukan_da_kikeyi_wa_mata_a_cikin_littafi,
+doc_ser_hospcrde   =  x18_how_do_you_document_the_services_that_you_provide_the_women_in_patients_hospital_card,
+doc_ser_hospcrdh   =  x18_ta_yaya_kike_adana_ayyukan_da_kikeyi_wa_mata_katin_asibitin_marar_lafiya,
+doc_ser_dnt_doce   =  x18_how_do_you_document_the_services_that_you_provide_the_women_i_dont_document,
+doc_ser_dnt_doch   =  x18_ta_yaya_kike_adana_ayyukan_da_kikeyi_wa_mata_ban_rubuta_komai,
+
+# Question 19: When_do_you_first_contact_with_pregnant_women
+fcontact_pw_1tme   =  x19a_when_do_you_first_contact_with_pregnant_women_first_trimester,
+fcontact_pw_1tmh   =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_wata_daya_zuwa_ukku_da_daukar_ciki,
+fcontact_pw_2tme   =  x19a_when_do_you_first_contact_with_pregnant_women_second_trimester,
+fcontact_pw_2tmh   =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_wata_hudu_zuwa_shidda_da_daukar_ciki,
+fcontact_pw_3tme   =  x19a_when_do_you_first_contact_with_pregnant_women_third_trimester,
+fcontact_pw_3tmh   =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_wata_bakwai_zuwa_tara_da_daukar_ciki,
+fcontact_pw_dle    =  x19a_when_do_you_first_contact_with_pregnant_women_during_labor,      
+fcontact_pw_dlh    =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_cikin_nakuda,             
+fcontact_pw_abe    =  x19a_when_do_you_first_contact_with_pregnant_women_after_birth,
+fcontact_pw_abh    =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_bayan_haiwuwa,
+fcontact_pw_bpe    =  x19a_when_do_you_first_contact_with_pregnant_women_before_pregnancy,
+fcontact_pw_bph    =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_kafin_daukar_ciki,
+fcontact_pw_tae    =  x19a_when_do_you_first_contact_with_pregnant_women_at_the_time_of_abortion,
+fcontact_pw_tah    =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_lokacin_zubar_da_ciki,
+fcontact_pw_oe     =  x19a_when_do_you_first_contact_with_pregnant_women_other_specify, 
+fcontact_pw_oh     =  x19a_a_yaushe_ne_kike_fara_duba_me_juna_biyu_wani_lokaci_daban_fade_shi,
+
+                                                                                   
+
+  ## Question 31: What_services_do_you_render_children_under_five?
+  
+  ser_u5_imme         =  x31a_what_services_do_you_render_children_under_five_routine_immunization,
+  ser_u5_immh         =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_rigakafin_yau_da_kullum,
+  ser_u5_acte         =  x31a_what_services_do_you_render_children_under_five_treatment_for_malaria_with_antimalarials_specify_other_treatments,
+  ser_u5_acth         =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_magance_zazzabin_cizon_sauro_da_magungunan_zazzabi_in_akwai_wani_bayan_wannan_ka_fase_shi,
+  ser_u5_orse         =  x31a_what_services_do_you_render_children_under_five_ors_and_zinc_for_diarrhea_specify_other_treatments,
+  ser_u5_orsh         =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_bada_ruwan_gishiri_da_suga_saboda_gudawa_in_akwai_wani_bayan_wannan_ka_fase_shi,
+  ser_u5_malne        =  x31a_what_services_do_you_render_children_under_five_kwashpap_for_malnutrition_others_specify,
+  ser_u5_malnh        =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_bada_kunu_ga_marasa_cin_abinci_me_gina_jiki_wani_daban_fade_shi,
+  ser_u5_cxie         =  x31a_what_services_do_you_render_children_under_five_antibiotics_for_chest_infection_others_specify,
+  ser_u5_cxih         =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_bada_magungunan_rigakafi_na_ciwukan_kirji_wani_daban_fade_shi,
+  ser_u5_vitae        =  x31a_what_services_do_you_render_children_under_five_vitamin_a_for_measles_others_specify,
+  ser_u5_vitah        =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_bada_sinadirin_vitamin_a_na_magance_cutar_kyanda_wani_daban_fade_shi,
+  ser_u5_grwthe       =  x31a_what_services_do_you_render_children_under_five_growth_chart_monitoring,
+  ser_u5_grwthh       =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_kula_da_girman_yaron_yana_girma_yanda_ya_kamata_ko_akasin_haka,
+  ser_u5_othere       =  x31a_what_services_do_you_render_children_under_five_other_specify,
+  ser_u5_otherh       =  x31a_wadanne_irin_ayyuka_ko_taimako_kike_bawa_yara_yan_kasa_da_wata_biyar_5_wani_daban_fade_shi,
+  ser_u5_smalre       =  x31b_specify_the_malaria_treatment,
+  ser_u5_smalrh       =  x31b_wane_irin_maganin_zazzabin_cizon_sauro_malaria,
+  ser_u5_sodrhte      =  x31c_specify_other_diarrhoea_treatment,
+  ser_u5_sodrhth      =  x31c_fadi_wani_maganin_gudanawa_da_kike_amfani_da_shi,
+  ser_u5_somalte      =  x31d_specify_other_malnutrition_treatment,
+  ser_u5_somalth      =  x31d_fadi_wani_maganin_gina_jikin_da_kike_badawa_ga_raya_masu_rama_sosai,
+  ser_u5_sodxtae      =  x31e_specify_other_disease_treatment_with_antibiotics,
+  ser_u5_sodxtah      =  x31e_ki_fadi_wasu_cutuka_da_kike_bada_maganinsu_da_irin_maganin_da_kike_badawa,
+  ser_u5_sovitse      =  x31f_specify_other_vitamin_supplements,
+  ser_u5_sovitsh      =  x31f_ki_fadi_wasu_sinadirai_da_kike_badawa_da_maganin_ciwon_da_sukeyi,
+  ser_u5_soothere     =  x31g_other_specify,
+  ser_u5_sootherh     =  x31g_akwai_wasu_abubuwa_da_kikewa_yara_kasa_da_shekara_biyar_5,
+  
+  
+  ## Question 32: How_do_you_counsel_women_on_post_partum_care
+  cnselw_ppc_hwtre    =  x32a_how_do_you_counsel_women_on_post_partum_care_bathe_twice_with_very_hot_water,  
+  cnselw_ppc_hwtrh    =  x32a_wane_shawarori_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba_yin_wanka_sau_biyu_2_da_ruwa_me_zafi_kullum,
+  cnselw_ppc_dhote    =  x32a_how_do_you_counsel_women_on_post_partum_care_drink_only_hot_fluids,
+  cnselw_ppc_dhoth    =  x32a_wane_shawarori_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba_shan_abun_sha_me_zafi_kadai,
+  cnselw_ppc_swrme    =  x32a_how_do_you_counsel_women_on_post_partum_care_sit_in_a_warm_room,
+  cnselw_ppc_swrmh    =  x32a_wane_shawarori_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba_zama_a_daki_me_dumi,
+  cnselw_ppc_nohhce   =  x32a_how_do_you_counsel_women_on_post_partum_care_mother_advised_not_to_engage_in_household_activities_for_some_time,
+  cnselw_ppc_nohhch   =  x32a_wane_shawarori_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba_shawartar_me_haihuwa_da_ta_hakura_da_ayyukan_gida_na_dan_wani_lokaci,
+  cnselw_ppc_siltze   =  x32a_how_do_you_counsel_women_on_post_partum_care_hot_sitz_bath_daily,
+  cnselw_ppc_siltzh   =  x32a_wane_shawarori_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba_shiga_ruwan_zafi_da_gishiri_kullum,
+  cnselw_ppc_ntrtne   =  x32a_how_do_you_counsel_women_on_post_partum_care_nutritional_counselling,
+  cnselw_ppc_ntrtnh   =  x32a_wane_shawarori_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba_shawara_akan_kula_da_abincin_da_suke_ci,
+  cnselw_ppc_othere   =  x32a_how_do_you_counsel_women_on_post_partum_care_others_specify,
+  cnselw_ppc_otherh   =  x32a_wane_shawarori_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba_wani_daban_fade_shi, 
+  cnselw_ppc_spothre  =  x32b_please_specify_other_counsel_you_give_women_on_post_partum_care,
+  cnselw_ppc_spothrh  =  x32b_ki_fadi_wasu_shawarorin_da_kike_ba_matan_da_basu_wuce_wata_shida_6_da_haihuwa_ba,                                                                                                               
+  
+ ## Question 33: For what reason do you refer women post_partum
+ rfrw_pp_rie             =  x33a_for_what_reason_do_you_refer_women_post_partum_routine_immunization,
+ rfrw_pp_rih             =  x33a_wane_dilili_ne_yake_sawa_ki_tura_matan_da_basu_wuce_wata_shida_da_haihuwa_ba_zuwa_gaba_asibiti_rigakafin_yau_da_kullum,
+ rfrw_pp_locne           =  x33a_for_what_reason_do_you_refer_women_post_partum_loss_of_consciousness,
+ rfrw_pp_locnh           =  x33a_wane_dilili_ne_yake_sawa_ki_tura_matan_da_basu_wuce_wata_shida_da_haihuwa_ba_zuwa_gaba_asibiti_gushewar_hankali_fita_hayyachi, 
+ rfrw_pp_cnvle           =  x33a_for_what_reason_do_you_refer_women_post_partum_convulsion,
+ rfrw_pp_cnvlh           =  x33a_wane_dilili_ne_yake_sawa_ki_tura_matan_da_basu_wuce_wata_shida_da_haihuwa_ba_zuwa_gaba_asibiti_jijjiga_fisge_fisge,
+ rfrw_pp_ebleede         =  x33a_for_what_reason_do_you_refer_women_post_partum_in_cases_of_excessive_bleeding,
+ rfrw_pp_ebleedh         =  x33a_wane_dilili_ne_yake_sawa_ki_tura_matan_da_basu_wuce_wata_shida_da_haihuwa_ba_zuwa_gaba_asibiti_koda_an_samu_zubar_jini_har_ya_wuce_misali,
+ rfrw_pp_fpe             =  x33a_for_what_reason_do_you_refer_women_post_partum_family_planning,
+ rfrw_pp_fph             =  x33a_wane_dilili_ne_yake_sawa_ki_tura_matan_da_basu_wuce_wata_shida_da_haihuwa_ba_zuwa_gaba_asibiti_tsarin_tazarar_haihuwa,
+ rfrw_pp_othre           =  x33a_for_what_reason_do_you_refer_women_post_partum_other,
+ rfrw_pp_othrh           =  x33a_wane_dilili_ne_yake_sawa_ki_tura_matan_da_basu_wuce_wata_shida_da_haihuwa_ba_zuwa_gaba_asibiti_wani_dalili_daban_fade_shi,
+ rfrw_pp_spothre         =  x33b_what_other_reason,
+ rfrw_pp_spothrh         =  x33b_wane_dalili_ne_daban_ki_fade_shi,
+  
+## Question 34: Do you face any barriers when referring patients or treating them?
+face_barrierse        =  x34a_do_you_face_any_barriers_when_referring_patients_or_treating_them,
+face_barriersh        =  x34a_kina_fuskantar_wasu_kalubale_wajen_tura_marar_lafiya_gaba_asibiti_ko_basu_magani,
+face_bar_yese         =  x34b_if_yes_what_kinds_of_barriers, 
+face_bar_yesh         =  x34b_idan_eh_wayanme_irin_kalubale_kike_fuskanta,
+
+
+  ## Question 35: Do you render any forms of family planning?
+family_pe             =  x35a_do_you_render_any_forms_of_family_planning, 
+family_ph             =  x35a_ko_kina_bada_tsarin_tazarar_haihuwa,
+family_p_inje         =  x35b_what_forms_of_family_planning_do_you_render_allura,
+family_p_injh         =  x35b_wane_irin_tsarin_tazarar_haihuwa_kike_bayarwa_allura,
+family_p_consle       =  x35b_what_forms_of_family_planning_do_you_render_shayarwa_ta_musamman,
+family_p_conslh       =  x35b_wane_irin_tsarin_tazarar_haihuwa_kike_bayarwa_shayarwa_ta_musamman,
+family_p_condme       =  x35b_what_forms_of_family_planning_do_you_render_ta_hanyar_shinge_ko_karewa_sa_kwaroron_roba_da_sauran_su,
+family_p_condmh       =  x35b_wane_irin_tsarin_tazarar_haihuwa_kike_bayarwa_ta_hanyar_shinge_ko_karewa_sa_kwaroron_roba_da_sauran_su,
+family_p_pillse       =  x35b_what_forms_of_family_planning_do_you_render_kwayar_magani,
+family_p_pillsh       =  x35b_wane_irin_tsarin_tazarar_haihuwa_kike_bayarwa_kwayar_magani,
+family_p_hblmxe       =  x35b_what_forms_of_family_planning_do_you_render_hade_haden_gargajiyya_fadi_wanne,
+family_p_hblmxh       =  x35b_wane_irin_tsarin_tazarar_haihuwa_kike_bayarwa_hade_haden_gargajiyya_fadi_wanne,
+family_p_othere       =  x35b_what_forms_of_family_planning_do_you_render_other_specify,
+family_p_otherh       =  x35b_wane_irin_tsarin_tazarar_haihuwa_kike_bayarwa_wani_tsarin_daban_fade_shi,
+family_p_sphblmxe     =  x35c_please_specify_the_herbal_concoction,
+family_p_sphblmxh     =  x35c_fadi_hade_haden_gargajiyya_da_kike_badawa,
+family_p_wothre       =  x35d_what_other,
+family_p_wothrh       =  x35d_wane_tsarin_tazarar_haihuwa_na_daban_kike_badawa_fade_shi,
+
+
+  ## Question 36: Do you get paid for services rendered?
+get_paid_sere         =  x36a_do_you_get_paid_for_services_rendered,
+get_paid_serh         =  x36a_shin_ana_biyan_ki_bayan_kinyi_aiki,
+get_paid_howe         =  x36b_if_yes_how_do_you_get_paid,
+get_paid_howh         =  x36b_yaya_ake_biyan_ki,
+get_paid_soone        =  x36c_if_yes_how_soon_do_you_get_paid_after_rendering_your_services,    
+get_paid_soonh        =  x36c_yaushe_ake_biyan_ki_bayan_ke_kare_aikin_ki,
+
+
+# Opinions and Challenges -------------------------------------------------
+
+## Question 37: what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home?
+
+pre_hmeb_mcbae        =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_it_is_more_convenient_to_call_a_birth_attendant,
+pre_hmeb_mcbah        =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_hankalin_su_yafi_kwanciya_su_kira_ma_aikatan_karbar_haihuwa_na_gargajiyya_su_zo_gida,
+pre_hmeb_difte        =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_the_health_facilities_are_far_from_reach_with_difficulty_finding_transport,
+pre_hmeb_difth        =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_asibitocin_suna_nesa_da_gidajen_su_suna_shan_wahalar_kafin_su_cinma_asibitocin,
+pre_hmeb_csthfe       =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_costs_related_to_birth_at_health_facilities,
+pre_hmeb_csthfh       =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_tsadar_haihuwa_a_asibiti,
+pre_hmeb_pfamhe       =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_preference_of_family_husband_for_woman_to_stay_at_home,
+pre_hmeb_pfamhh       =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_yan_uwanta_ko_mijinta_sunfi_so_ta_haihu_a_gida,
+pre_hmeb_nabene       =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_lack_of_awareness_of_benefits_of_giving_birth_at_health_facilities,
+pre_hmeb_nabenh       =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_duhun_kai_akan_amfanin_haihuwa_a_asibiti,
+pre_hmeb_ltrste       =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_lack_of_trust_in_health_facilities_and_or_modern_medicine,
+pre_hmeb_ltrsth       =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_rashin_yadda_da_asibiti_ko_maganin_zamani,
+pre_hmeb_ecctbae      =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_enhanced_comfort_and_confidence_in_tba,
+pre_hmeb_ecctbah      =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_ingantaccen_walawa_da_yadda_da_unguwan_zoma,
+pre_hmeb_nothfe       =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_labor_progresses_quickly_giving_no_time_to_reach_a_health_facility,
+pre_hmeb_nothfh       =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_nakuda_na_zuwa_musu_da_saurin_da_ba_zasu_iya_zuwa_asibiti_cikin_lokaci_ba,
+pre_hmeb_wdieme       =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_women_die_more_while_giving_birth_at_the_health_facility,
+pre_hmeb_wdiemh       =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_mata_sunfi_mutuwa_idan_sun_haihu_a_asibiti,
+pre_hmeb_othre        =  x37a_what_do_you_think_is_the_main_reason_why_women_in_your_community_prefer_to_give_birth_at_home_other_specify,
+pre_hmeb_othrh        =  x37a_me_kike_ganin_babban_dalilin_da_yasa_mutanen_yankin_ku_suka_fi_so_su_haihu_a_gida_wani_dalili_daban_fade_shi,
+pre_hmeb_wothere      =  x37b_what_other_reason,
+pre_hmeb_wotherh      =  x37b_wane_dalili,
+    
+
+## Question 38: From_your_observations_who_is_the_primary_decision_maker_about_maternal_issues?
+dmkr_whealthe         =  x38a_from_your_observations_who_is_the_primary_decision_maker_about_maternal_issues, 
+dmkr_whealthh         =  x38a_daga_lurar_ki_waye_babban_mai_yanke_shawara_akan_abubuwanda_suka_shafi_lafiyar_mata,
+dmkr_whealth_oe       =  x38b_please_specify,
+dmkr_whealth_oh       =  x38b_idan_wasu_daban_waye_su,
+
+
+## Question 39: From_your_observations_who_is_the_primary_decision_maker_about_children issues?
+dmkr_chealthe         =  x39a_from_your_observations_who_is_the_primary_decision_maker_about_children_issues,
+dmkr_chealthh         =  x39a_daga_lurar_ki_waye_babban_mai_yanke_shawara_akan_abubuwanda_suka_shafi_lafiyar_yara,
+dmkr_chealth_oe       =  x39b_what_other,
+dmkr_chealth_oh       =  x39b_idan_wasu_daban_su_waye,
+
+
+
+## Question 40: Do_you_feel_you_can_intervene_provide_counsel_for_your_clients_when_there_is_a_disagreement_between_family_members_on_maternal_or_child_health_issues?
+intvn_counsele       =  x40a_do_you_feel_you_can_intervene_provide_counsel_for_your_clients_when_there_is_a_disagreement_between_family_members_on_maternal_or_child_health_issues,
+intvn_counselh       =  x40a_shin_kina_shiga_tsakani_ki_samar_da_daidaito_in_an_samu_rashin_fahimta_tsakanin_majinyata_akan_abubuwa_irin_su,
+intvn_consldpe       =  x40b_what_does_it_depend_on,                                                                                                                                                    
+intvn_consldph       =  x40b_me_ya_danganta_akan_shi,
+intvn_consl_rslve    =  x40c_please_describe_how_you_would_help_clients_resolve_these_disagreements,                                                                                                              
+intvn_consl_rslvh    =  x40c_kiyi_bayani_akan_yadda_zaki_taimaki_majinyata_akan_daidaita_samun_rashin_fahimta_tsakanin_su_da_yan_uwan_su_akan_harakar_da_ta_shafi_lafiya_mata_ko_yara,
+                        
+
+
+## Question 41:                                                                                                                                                     
+fbarrierse           =  x41a_have_you_ever_faced_any_barriers_when_dispensing_services,
+fbarriersh           =  x41a_shin_ko_ke_taba_fuskantar_wasu_kalubale_wajen_gudanarda_aikin_ki,
+fbarriers_we         =  x41b_if_yes_what_kind_of_barriers,
+fbarriers_wh         =  x41b_ki_bada_misalin_irin_kalubalen,
+
+
+## Question 42: 
+mlike_relcte         =  x42a_who_is_most_likely_to_show_reluctance_to_getting_your_services_for_women_or_children,
+mlike_relcth         =  x42a_waye_mafi_yiwuwa_ya_nuna_rashin_son_karban_aikin_ku,                                                     
+mlike_rel_welse      =  x42b_who_else, 
+mlike_rel_welsh      =  x42b_sai_wa_kuma,
+  
+
+
+## Question 43: 
+unsccss_vaxmxe       =  x43a_have_you_ever_experienced_challenges_or_been_unsuccessful_in_administering_a_vaccine_or_medicine_to_children,
+unsccss_vaxmxh       =  x43a_ke_taba_samun_wani_kalubale_ko_matsala_wajen_bada_allurar_rigakafi_ko_magani_ga_yara,
+unsccss_vaxmx_rsne   =  x43b_if_you_have_experienced_challenges_administering_a_vaccine_or_medicine_to_children_what_was_the_most_likely_reason, 
+unsccss_vaxmx_rsnh   =  x43b_idan_ke_taba_samun_kalubale_ko_masala_wajen_bada_allurar_rigakafi_ko_magani_ga_yara_meye_dalilin,
+unsccss_vaxmx_otre   =  x43c_which_other,
+unsccss_vaxmx_otrh   =  x43c_wane_kalubale_daban,
+
+
+
+## Question 44: 
+hh_refuse_se         =  x44a_in_your_experience_how_often_do_households_refuse_services_for_children,
+hh_refuse_sh         =  x44a_a_kwarewar_ki_sau_nawa_gidaje_suke_kin_amsar_taimakon_da_kike_ba_yara,
+hh_refuse_rsne       =  x44b_what_reasons_do_they_give_for_refusal, 
+hh_refuse_rsnh       =  x44b_wane_dalilai_suka_bada_na_rashin_karba,
+hh_refuse_mgte       =  x44c_how_do_you_manage_such_instances,
+hh_refuse_mgth       =  x44c_yaya_kike_yi_idan_hakan_ta_faru,
+
+
+# SECTION: Opinions and Challenges ----------------------------------------
+##Question 45: _which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children
+barriers_ser_transe   =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_lack_of_transportation_means,
+barriers_ser_transh   =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_rashin_abun_hawa_mota_mashin,                                                                                                                                                    
+barriers_ser_afdte    =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_unaffordability_of_transportation,
+barriers_ser_afdth    =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_tsadar_tafiya_kudin_mota_mashin,
+barriers_ser_loce     =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_inability_to_locate_the_target_household,
+barriers_ser_loch     =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_rashin_gano_gidan_da_zaayi_aiki,
+barriers_ser_inadtime =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_inadequate_time_to_reach_all_the_households_requesting_services,
+barriers_ser_inadtimh =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_rashin_isasshen_lokacin_da_zaa_isa_gidan_da_ke_bukatar_taimako,                                                                                                                                                                                          
+barriers_ser_dmkrabse =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_decision_maker_was_not_present,
+barriers_ser_dmkrabsh =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_mai_yanke_shawara_bada_umurni_bada_izini_mai_gidan_baya_nan,
+barriers_ser_dmkrntae =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_decision_maker_did_not_allow_service_to_be_delivered,
+barriers_ser_dmkrntah =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_mai_yanke_shawara_bada_umurni_bada_izini_mai_gidan_bai_bari_ayi_duka_aikin_da_ya_kamata,
+barriers_ser_tbapere  =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_permission_needed_to_travel_to_certain_areas_for_tb_as_themselves,
+barriers_ser_tbaperh  =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_unguwar_zoman_kanta_tana_bukatar_a_bata_izini_kafin_ta_je_wasu_wuraren,
+barriers_ser_tbasce   =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_security_concerns_that_may_be_raised_by_tba_s_household,
+barriers_ser_tbasch   =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_yan_gidan_yan_uwan_unguwar_zoman_suna_iya_damuwa_da_tsaro_lafiyar_ta,                                                                                                                                                                                  
+barriers_ser_tbapse   =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_concern_for_own_personal_security_describe_type_of_security_challenge,
+barriers_ser_tbapsh   =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_unguwan_zoman_tana_damuwa_da_tsaron_da_lafiyar_kanta,                                                                                                                                                                                                
+barriers_ser_otherse  =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_other_specify,
+barriers_ser_othersh  =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_wani_abu_daban_fade_shi,
+barriers_ser_normse   =  x45a_which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children_socio_cultural_norms_please_explain,
+barriers_ser_normsh   =  x45a_wane_kalubale_kike_fuskanta_cikin_wayannan_wajen_bada_taimakon_ki_zuwa_ga_kula_da_lafiyar_mata_da_yara_aladu,
+barriers_ser_scncrne  =  x45b_if_yes_concern_for_personal_security_please_describe_the_type_of_security_concerns_faced,
+barriers_ser_scncrnh  =  x45b_idan_ke_damu_da_tsaron_kan_ki_da_lafiyar_jikinki_ki_bada_bayani_akan_matsalolin_tsaro_da_kike_fuskanta,
+barriers_ser_exnorme  =  x45c_if_yes_sociocultural_norms_please_explain,
+barriers_ser_exnormh  =  x45c_ki_bada_bayani_akan_aladun,
+barriers_ser_speothe  =  x45d_what_other_specify,
+barriers_ser_speothh  =  x45d_ki_bada_bayani_akan_wasu_kalubalen_da_kike_fuskanta,
+
+
+### Question 46: From_your_experience_what_are_the_most_important_health_needs_in_your_community?
+health_needs_comme    =  x46a_from_your_experience_what_are_the_most_important_health_needs_in_your_community,
+health_needs_commh    =  x46a_daga_dadewan_shekarunki_na_aiki_da_kuma_kwarewarki_ki_bada_bayani_akan_muhimman_bukatu_na_lafiya_a_garinku,
+learn_chneeds_ccone   =  x46b_how_did_learn_about_community_health_needs_community_consultations,
+learn_chneeds_cconh   =  x46b_ta_ya_kika_san_wayannan_bukatun_na_lafiya_a_garin_ku_labari_tare_da_wasu_yan_gari,
+learn_chneeds_idiswe  =  x46b_how_did_learn_about_community_health_needs_informal_discussions_with_women_you_provide_services_to,
+learn_chneeds_idiswh  =  x46b_ta_ya_kika_san_wayannan_bukatun_na_lafiya_a_garin_ku_labari_tare_da_matan_da_nake_kula_da_su,
+learn_chneeds_idisce  =  x46b_how_did_learn_about_community_health_needs_informal_discussions_with_other_community_members,
+learn_chneeds_idisch  =  x46b_ta_ya_kika_san_wayannan_bukatun_na_lafiya_a_garin_ku_tattaunawa_ta_musamman_da_yan_gari,
+learn_chneeds_obsexe  =  x46b_how_did_learn_about_community_health_needs_observations_please_explain,
+learn_chneeds_obsexh  =  x46b_ta_ya_kika_san_wayannan_bukatun_na_lafiya_a_garin_ku_lura_ta_hanyar_sa_ido_bada_bayani,
+learn_chneeds_dcomle  =  x46b_how_did_learn_about_community_health_needs_discussions_with_community_leaders,
+learn_chneeds_dcomlh  =  x46b_ta_ya_kika_san_wayannan_bukatun_na_lafiya_a_garin_ku_tattaunawa_ta_musamman_da_masu_unguwanni,
+learn_chneeds_ospece  =  x46b_how_did_learn_about_community_health_needs_other_specify,
+learn_chneeds_ospech  =  x46b_ta_ya_kika_san_wayannan_bukatun_na_lafiya_a_garin_ku_wata_hanya_daban_fade_ta,
+learn_chneeds_obexpe  =  x46c_if_observations_please_explain,
+learn_chneeds_obexph  =  x46c_me_ika_lura_da_shi,
+learn_chneeds_othere  =  x46d_what_other,
+learn_chneeds_otherh  =  x46d_wace_hanya,
+  
+  
+  
+### Question 47: What_are_any_barriers_that_make_it_hard_to_identify_community_health_needs?
+barriers_hneedse      =  x47_what_are_any_barriers_that_make_it_hard_to_identify_community_health_needs,
+barriers_hneedsh      =  x47_wane_kalubale_suka_sa_gano_matsalolin_lafiyar_garinku_yayi_wahala,
+
+
+
+
+### SECTION: Additional TBA Services
+#Question 48: Who_in_the_community_are_you_able_to_provide_services_to?
+provide_ser_pwomene   =  x48a_who_in_the_community_are_you_able_to_provide_services_to_only_pregnant_women,
+provide_ser_pwomenh   =  x48a_wa_kike_iya_kula_da_su_a_garinku_masu_juna_biyu_kawai,
+provide_ser_womene    =  x48a_who_in_the_community_are_you_able_to_provide_services_to_women,
+provide_ser_womenh    =  x48a_wa_kike_iya_kula_da_su_a_garinku_mata,
+provide_ser_childe    =  x48a_who_in_the_community_are_you_able_to_provide_services_to_children,
+provide_ser_childh    =  x48a_wa_kike_iya_kula_da_su_a_garinku_yara_kasa_da_shekara_goma,
+provide_ser_adolese   =  x48a_who_in_the_community_are_you_able_to_provide_services_to_adolescents,
+provide_ser_adolesh   =  x48a_wa_kike_iya_kula_da_su_a_garinku_yara_shekara_goma_zuwa_sama,
+provide_ser_mene      =  x48a_who_in_the_community_are_you_able_to_provide_services_to_men,
+provide_ser_menh      =  x48a_wa_kike_iya_kula_da_su_a_garinku_maza,
+provide_ser_elderse   =  x48a_who_in_the_community_are_you_able_to_provide_services_to_elderly,
+provide_ser_eldersh   =  x48a_wa_kike_iya_kula_da_su_a_garinku_tsofaffi,
+provide_ser_otherse   =  x48a_who_in_the_community_are_you_able_to_provide_services_to_others_please_specify,
+provide_ser_othersh   =  x48a_wa_kike_iya_kula_da_su_a_garinku_waddansu_daban_fade_su,
+provide_ser_wothere   =  x48b_what_other,
+provide_ser_wotherh   =  x48b_su_waye,
+
+  
+#Question 49: Are_you_able_to_co_design_implement_and_report_on_health_promotion_activities_in_your_community?
+codesgn_implmte       =  x49_are_you_able_to_co_design_implement_and_report_on_health_promotion_activities_in_your_community,
+codesgn_implmth       =  x49_kina_iya_zanawa_aiwatarwa_da_bada_rahoto_akan_ayyukan_waye_kan_alumma_a_garinku, 
+
+#Question 50: Are_there_additional_services_that_you_can_or_would_be_willing_to_provide_if_you_had_the_opportunity_and_the_resources?
+add_ser_willinge      =  x50a_are_there_additional_services_that_you_can_or_would_be_willing_to_provide_if_you_had_the_opportunity_and_the_resources,
+add_ser_willingh      =  x50a_akwai_wasu_karin_ayyuka_da_zaki_so_kiyi_idan_an_baki_dama_da_kuma_kayan_aiki,
+add_ser_wsere         =  x50b_if_yes_what_services,
+add_ser_wserh         =  x50b_wane_irin_ayyuka_zaki_iya_yi,
+add_ser_whyne         =  x50c_if_no_why_not,
+add_ser_whynh         =  x50c_me_yasa_ba_zaki_iya_yi_ba,
+
+#Question 51: Are_there_any_types_of_health_services_that_you_think_fall_outside_your_role?
+type_hcser_orole      =  x51a_are_there_any_types_of_health_services_that_you_think_fall_outside_your_role,
+type_hcser_orolh      =  x51a_akwai_wasu_irin_ayyukan_lafiya_da_kike_tsammanin_basu_cikin_abubuwan_da_ya_kamata_kiyi,
+type_hcser_whsere     =  x51b_what_health_services,
+type_hcser_whserh     =  x51b_kaman_wayanme_irin_ayyukan_lafiya,
+type_hcser_whye       =  x51c_why,
+type_hcser_whyh       =  x51c_me_yasa_kike_tsammanin_basu_cikin_abubuwan_da_ya_kamata_kiyi
+
+
+
+
+   
+  ) %>% 
+ 
+  #list(tba)
+  #names(tba)
+  #) %>%                
+  #class(tba$state) #check class
+  #tabyl(tba$
+  # remove unnecessary column
+  # mutate(as.numeric(settlement_coverh)) %>% 
+  # mutate(as.numeric(settlement_covere)) %>%
+  
+  distinct() %>%                 # de-duplicate rows  
+  
+  
+  
+  # # merging Hausa and English Columns: Socio demographics
+  mutate(age                  = coalesce (agee, ageh))                                   %>%
+  mutate(state                = coalesce (statee, stateh))                               %>%
+  mutate(lga                  = coalesce (lgaek, lgaen,lgahk,lgahn))                     %>%
+  mutate(ward                 = coalesce (warde, wardh))                                 %>%
+  mutate(settlement           = coalesce (settlemente, settlementh))                     %>%
+  mutate(education            = coalesce (educatione, educationh))                       %>%
+  mutate(service_years        = coalesce (service_yearse, service_yearsh))               %>%
+  mutate(wards_cover          = coalesce (wards_covere, wards_coverh))                   %>%
+  mutate(settlement_cover     = coalesce (settlement_covere, settlement_coverh))         %>%
+  mutate(services_offer       = coalesce (services_offere, services_offerh))             %>%
+  
+  # # Merging Hausa and English columns for question 11: Where_do_you_offer_your_services_as_a_tba?
+  mutate(hf_type              = coalesce (hf_typee,          hf_typeh))                                                     %>%
+  mutate(hf_tier              = coalesce (hf_tiere,          hf_tierh))                                                     %>%
+  mutate(services_offer       = coalesce (services_offere,   services_offerh))                                              %>%
+  
+  # # Merging Hausa and English columns for question 12: How_do_you_travel_for_work? 
+  mutate(travel_work_ccar        = coalesce (travel_work_ccare, travel_work_ccarh))                                         %>%
+  mutate(travel_work_pcar        = coalesce (travel_work_pcare, travel_work_pcarh))                                         %>%
+  mutate(travel_work_walk        = coalesce (travel_work_walke, travel_work_walkh))                                         %>%
+  mutate(travel_work_bike        = coalesce (travel_work_bikee, travel_work_bikeh))                                         %>%
+  mutate(travel_work_mtrc        = coalesce (travel_work_mtrce, travel_work_mtrch))                                         %>%
+  
+  # # Merging Hausa and English columns for question 13: If_given_the_options_would_you_prefer_to_travel_to_other_areas_e_g_other_neighborhoods_to_do_your_work?
+  mutate(prefer_travel         = coalesce (prefer_travele,      prefer_travelh))                                           %>%
+  mutate(prefer_travel_whr     = coalesce (prefer_travel_whre, prefer_travel_whrh))                                        %>%
+  
+  # # recoding for prefer_travel
+  mutate(prefer_travel  = recode(prefer_travel,    # recode column values
+                                  #Old                                =  New
+                                  "Eh nafison in je wasu garuruwan"   =  "Yes",
+                                  "A'a"                               =  "No"))                 %>%
+  
+  # # Merging Hausa and English columns for question 14: How_did_you_acquire_your_skills_as_a_tba?
+  mutate(skills_family         = coalesce (skills_familye,    skills_familyh))                                               %>%
+  mutate(skills_school         = coalesce (skills_schoole,    skills_schoolh))                                               %>%
+  mutate(skills_other_tba      = coalesce (skills_other_tbae, skills_other_tbah))                                            %>%
+  mutate(skills_other          = coalesce (skills_othere,     skills_otherh))                                                %>%
+  
+  
+  # # Merging Hausa and English columns for Question 15: Have_you_had_additional_capacity_building_training_opportunities_to_improve_your_skill? 
+  mutate(add_train_cb        = coalesce (add_capacity_be,  add_capacity_bh))                                                 %>%
+  mutate(add_train_when      = coalesce (add_train_whene,  add_train_whenh))                                                 %>%
+  mutate(add_train_no_y      = coalesce (add_train_no_ye,  add_train_no_yh))                                                 %>%
+  mutate(add_train_other     = coalesce (add_train_othere, add_train_otherh))                                                %>% 
+ 
+  # # recoding for add_train_no_y
+  mutate(add_train_no_y  = recode(add_train_no_y ,    # recode column values
+                             #Old                                     =  New
+"An bani dama amma bai daidaitu da abubuwan da ke gabana ba" =  "I was given the opportunity, but it was not aligned with my priorities",
+"An bani dama amma banda lokaci/ina yin wasu ayukka lokacin"  =  " I was given the opportunity, but did not have the time/ had a commitment at the period",
+"An bani dama amma banyi tunanin yanada amfani ba"           =  "I was given the opportunity, but I did not think it was important",
+  "Ba'a taba bani dama ba"                                   =  "I was never given the opportunity",
+  "Wani dalili daban (Fade shi)"                             =  "Other (specify)"))                                     %>%
+  # # recoding for add_capacity_b
+  mutate(add_train_cb  = recode(add_train_cb ,    # recode column values
+                                  #Old                                =  New
+                                  "Eh na samu"                        =  "Yes",
+                                  "A'a"                               =  "No"))                                         %>%
+  # # recoding for add_train_when
+  mutate(add_train_when  = recode(add_train_when ,    # recode column values
+                                  #Old                                                          =  New
+                                  "cikin shekara biyar (5) da suka wuce"    =  "Within the last 5 years",
+                                  "cikin shekara daya (1) da ta wuce"       =  "Within the last 1 year",
+                                  "cikin shekara ukku (3) da suka wuce"     =  "Within the last 3 years",
+                                  "cikin wata shidda (6) da suka wuce"      =  "Within the last 6 months",
+                                  "fiye da shekara biyar (5) da suka wuce"  =  "More than 5 years"))                    %>%
+  
+  # # Merging Hausa and English columns for question 16: Would_you_be_willing_to_take_on_additional_trainings_should_you_be_given_the_opportunity? 
+  mutate(will_add_train      = coalesce (will_add_traine, will_add_trainh))                                             %>% 
+
+  # # recoding for codesgn_implmt 
+  mutate(will_add_train  = recode(will_add_train ,    # recode column values
+                                  #Old                                =  New
+                                  "Eh"                                =  "Yes",
+                                  "A'a"                               =  "No",
+                                  "Ya danganta akan... (Fade shi)"    =  "It Depends"))                                   %>%
+  
+  # # merging Hausa and English Columns for question 17:  who_in_the_household_reaches_out_to_you_for_your_services?  
+  mutate(hh_rout_pwoman      = coalesce (hh_rout_pwomane, hh_rout_pwomanh))                                               %>% 
+  mutate(hh_rout_pwhsbnd     = coalesce (hh_rout_pwhsbnde, hh_rout_pwhsbndh))                                             %>%
+  mutate(hh_rout_pwmoinlw    = coalesce (hh_rout_pwmoinlwe, hh_rout_pwmoinlwh))                                           %>%
+  mutate(hh_rout_othr        = coalesce (hh_rout_othre, hh_rout_othrh))                                                   %>% 
+  mutate(hh_rout_others      = coalesce (hh_rout_otherse, hh_rout_othersh))                                               %>% 
+
+  
+  # # merging Hausa and English columns for question 18: How_do_you_document_the_services_that_you_provide_the_women?
+  mutate(doc_ser_dnt_doc       = coalesce (doc_ser_dnt_doce, doc_ser_dnt_doch))                                           %>%
+  mutate(doc_ser_hospcrd       = coalesce (doc_ser_hospcrde, doc_ser_hospcrdh))                                           %>%
+  mutate(doc_ser_notebook      = coalesce (doc_ser_notebooke, doc_ser_notebookh))                                         %>%
+ 
+ 
+  #Merging Hausa and English Columns of Question 19: When do you first contact with pregnant women?  
+  mutate(fcontact_pw_1tm     = coalesce (fcontact_pw_1tme,      fcontact_pw_1tmh))                                        %>%
+  mutate(fcontact_pw_2tm     = coalesce (fcontact_pw_2tme,      fcontact_pw_2tmh))                                        %>%
+  mutate(fcontact_pw_3tm     = coalesce (fcontact_pw_3tme,      fcontact_pw_3tmh))                                        %>%
+  mutate(fcontact_pw_dl      = coalesce (fcontact_pw_dle,       fcontact_pw_dlh))                                         %>%
+  mutate(fcontact_pw_ab      = coalesce (fcontact_pw_abe,       fcontact_pw_abh))                                         %>%
+  mutate(fcontact_pw_bp      = coalesce (fcontact_pw_bpe,       fcontact_pw_bph))                                         %>%
+  mutate(fcontact_pw_ta      = coalesce (fcontact_pw_tae,       fcontact_pw_tah))                                         %>%
+  mutate(fcontact_pw_o       = coalesce (fcontact_pw_oe,        fcontact_pw_oh))                                          %>%
+     
+  # # merging  Hausa and English columns for question 31: What_services_do_you_render_children_under_five?
+  mutate(ser_u5_imm            = coalesce (ser_u5_imme,     ser_u5_immh))                                                 %>%
+  mutate(ser_u5_act            = coalesce (ser_u5_acte,     ser_u5_acth))                                                 %>%
+  mutate(ser_u5_ors            = coalesce (ser_u5_orse,     ser_u5_orsh))                                                 %>%
+  mutate(ser_u5_maln           = coalesce (ser_u5_malne,    ser_u5_malnh))                                                %>%
+  mutate(ser_u5_cxi            = coalesce (ser_u5_cxie,     ser_u5_cxih))                                                 %>%
+  mutate(ser_u5_vita           = coalesce (ser_u5_vitae,    ser_u5_vitah))                                                %>%
+  mutate(ser_u5_grwth          = coalesce (ser_u5_grwthe,   ser_u5_grwthh))                                               %>%
+  mutate(ser_u5_other          = coalesce (ser_u5_othere,   ser_u5_otherh))                                               %>%
+  mutate(ser_u5_smalr          = coalesce (ser_u5_smalre,   ser_u5_smalrh))                                               %>%
+  mutate(ser_u5_sodrht         = coalesce (ser_u5_sodrhte,  ser_u5_sodrhth))                                              %>%
+  mutate(ser_u5_somalt         = coalesce (ser_u5_somalte,  ser_u5_somalth))                                              %>%  
+  mutate(ser_u5_sodxta         = coalesce (ser_u5_sodxtae,  ser_u5_sodxtah))                                              %>%
+  mutate(ser_u5_sovits         = coalesce (ser_u5_sovitse,  ser_u5_sovitsh))                                              %>%
+  mutate(ser_u5_soother        = coalesce (ser_u5_soothere, ser_u5_sootherh))                                             %>%
+   
+  # Merging Hausa and English columns for question 32: How do you counsel women on postpartum care?
+  mutate(cnselw_ppc_hwtr       = coalesce (cnselw_ppc_hwtre,       cnselw_ppc_hwtrh))                                     %>% 
+  mutate(cnselw_ppc_dhot       = coalesce (cnselw_ppc_dhote,       cnselw_ppc_dhoth))                                     %>%
+  mutate(cnselw_ppc_swrm       = coalesce (cnselw_ppc_swrme,       cnselw_ppc_swrmh))                                     %>% 
+  mutate(cnselw_ppc_nohhc      = coalesce (cnselw_ppc_nohhce,      cnselw_ppc_nohhch))                                    %>%
+  mutate(cnselw_ppc_siltz      = coalesce (cnselw_ppc_siltze,      cnselw_ppc_siltzh))                                    %>%
+  mutate(cnselw_ppc_ntrtn      = coalesce (cnselw_ppc_ntrtne,      cnselw_ppc_ntrtnh))                                    %>% 
+  mutate(cnselw_ppc_other      = coalesce (cnselw_ppc_othere,      cnselw_ppc_otherh))                                    %>%
+  
+  
+  # Merging Hausa and English columns for question 33: for what reason do you refer women post_partum?
+  mutate(rfrw_pp_ri            = coalesce (rfrw_pp_rie,            rfrw_pp_rih))                                          %>%
+  mutate(rfrw_pp_locn          = coalesce (rfrw_pp_locne,          rfrw_pp_locnh))                                        %>% 
+  mutate(rfrw_pp_cnvl          = coalesce (rfrw_pp_cnvle,          rfrw_pp_cnvlh))                                        %>% 
+  mutate(rfrw_pp_ebleed        = coalesce (rfrw_pp_ebleede,        rfrw_pp_ebleedh))                                      %>% 
+  mutate(rfrw_pp_fp            = coalesce (rfrw_pp_fpe,            rfrw_pp_fph))                                          %>%
+  mutate(rfrw_pp_othr          = coalesce (rfrw_pp_othre,          rfrw_pp_othrh))                                        %>%
+  mutate(rfrw_pp_spothr        = coalesce (rfrw_pp_spothre,        rfrw_pp_spothrh))                                      %>%
+   
+
+ # Merging Hausa and English columns for question 34: Do you face any barriers when referring patients or treating them?
+ mutate(face_barriers          = coalesce (face_barrierse,         face_barriersh))                                       %>%
+  # Recoding face_barriers from Hausa to English
+  mutate(face_barriers = recode(face_barriers,    # recode column
+                           #Old         =  New
+                           "Eh"         =  "Yes",
+                           "A'a"        =  "No")) %>%
+  
+
+
+#Merging Hausa and English columns for question 35: Do you render any forms of family planning?
+ mutate(family_p                = coalesce (family_pe,              family_ph))                                           %>%
+ mutate(family_p_inj            = coalesce (family_p_inje,          family_p_injh))                                       %>%
+ mutate(family_p_consl          = coalesce (family_p_consle,        family_p_conslh))                                     %>%
+ mutate(family_p_condm          = coalesce (family_p_condme,        family_p_condmh))                                     %>%
+ mutate(family_p_pills          = coalesce (family_p_pillse,        family_p_pillsh))                                     %>%
+ mutate(family_p_hblmx          = coalesce (family_p_hblmxe,        family_p_hblmxh))                                     %>%
+ mutate(family_p_other          = coalesce (family_p_othere,        family_p_otherh))                                     %>%
+ mutate(family_p_sphblmx        = coalesce (family_p_sphblmxe,      family_p_sphblmxh))                                   %>%
+ mutate(family_p_wothr          = coalesce (family_p_wothre,        family_p_wothrh))                                     %>%
+
+ # Recoding family_p from Hausa to English
+  mutate(family_p = recode(family_p,    # recode column
+                           #Old         =  New
+                           "Eh"         =  "Yes",
+                           "A'a"        =  "No")) %>% 
+  
+#Merging Hausa and English columns for question 36: Do you get paid for services rendered?
+ mutate(get_paid_ser            = coalesce (get_paid_sere,          get_paid_serh))                                       %>% 
+ mutate(get_paid_how            = coalesce (get_paid_howe,          get_paid_howh))                                       %>% 
+ mutate(get_paid_soon           = coalesce (get_paid_soone,         get_paid_soonh))                                      %>%
+  
+  # Recoding get_paid_ser, get_paid_how, and get_paid_soon from Hausa to English
+  mutate(get_paid_ser = recode(get_paid_ser,    # recode column
+                           #Old                                  =  New
+                           "Eh, marar lafiya ko yan uwansu"      =  "Yes, by the patient (or patients family)",
+                           "Eh, mai unguwa yana biya"            =  "Yes, by the village head",
+                           "A'a, kyauta nake aiki"               =  "No, I work probono (for free)"))                     %>% 
+  mutate(get_paid_how = recode(get_paid_how,    # recode column
+                           #Old                                  =  New
+                           "Da Kudi"                             =  "In cash",
+                           "Da Kyauta"                           =  "In kind",
+                           "Duka biyu"                           =  "Both"))                                              %>% 
+   mutate(get_paid_how = recode(get_paid_how,    # recode column
+                           #Old                                  =  New
+                           "Ina kare aikina"                     =  "Immediate payment",
+                           "Ina bada damar a jinkirta biya"      =  "Provide options for delayed payment",
+                           "Ina bada damar a biya guntu guntu"   =  "Provide options for payments installment"))          %>% 
+  
+#Merging Hausa and English Columns of Question 45: _which_of_the_following_barriers_do_you_face_when_trying_to_carry_out_and_deliver_your_services_to_women_and_or_children?  
+  mutate(barriers_ser_trans     = coalesce (barriers_ser_transe,   barriers_ser_transh))                                  %>%
+  mutate(barriers_ser_afdt      = coalesce (barriers_ser_afdte,    barriers_ser_afdth))                                   %>%
+  mutate(barriers_ser_loc       = coalesce (barriers_ser_loce,     barriers_ser_loch))                                    %>%
+  mutate(barriers_ser_inadtim   = coalesce (barriers_ser_inadtime, barriers_ser_inadtimh))                                %>%
+  mutate(barriers_ser_dmkrabs   = coalesce (barriers_ser_dmkrabse, barriers_ser_dmkrabsh))                                %>%
+  mutate(barriers_ser_dmkrnta   = coalesce (barriers_ser_dmkrntae, barriers_ser_dmkrntah))                                %>%
+  mutate(barriers_ser_tbaper    = coalesce (barriers_ser_tbapere,  barriers_ser_tbaperh))                                 %>%
+  mutate(barriers_ser_tbasc     = coalesce (barriers_ser_tbasce,   barriers_ser_tbasch))                                  %>%
+  mutate(barriers_ser_tbaps     = coalesce (barriers_ser_tbapse,   barriers_ser_tbapsh))                                  %>%
+  mutate(barriers_ser_others    = coalesce (barriers_ser_otherse,  barriers_ser_othersh))                                 %>%
+  mutate(barriers_ser_norms     = coalesce (barriers_ser_normse,   barriers_ser_normsh))                                  %>%
+  mutate(barriers_ser_scncrn    = coalesce (barriers_ser_scncrne,  barriers_ser_scncrnh))                                 %>%
+  mutate(barriers_ser_exnorm    = coalesce (barriers_ser_exnorme,  barriers_ser_exnormh))                                 %>%
+  mutate(barriers_ser_speoth    = coalesce (barriers_ser_speothe,  barriers_ser_speothh))                                 %>%
+  
+  
+  #Merging Hausa and English Columns of Question 46: From_your_experience_what_are_the_most_important_health_needs_in_your_community?  
+  mutate(health_needs_comm    = coalesce (health_needs_comme,     health_needs_commh))                                    %>%
+  mutate(learn_chneeds_ccon   = coalesce (learn_chneeds_ccone,   learn_chneeds_cconh))                                    %>%
+  mutate(learn_chneeds_idisw  = coalesce (learn_chneeds_idiswe, learn_chneeds_idiswh))                                    %>%
+  mutate(learn_chneeds_idisc  = coalesce (learn_chneeds_idisce, learn_chneeds_idisch))                                    %>%
+  mutate(learn_chneeds_obsex  = coalesce (learn_chneeds_obsexe, learn_chneeds_obsexh))                                    %>%  
+  mutate(learn_chneeds_dcoml  = coalesce (learn_chneeds_dcomle, learn_chneeds_dcomlh))                                    %>% 
+  mutate(learn_chneeds_ospec  = coalesce (learn_chneeds_ospece, learn_chneeds_ospech))                                    %>% 
+  mutate(learn_chneeds_obexp  = coalesce (learn_chneeds_obexpe, learn_chneeds_obexph))                                    %>% 
+  mutate(learn_chneeds_other  = coalesce (learn_chneeds_othere, learn_chneeds_otherh))                                    %>% 
+  
+#Merging Hausa and English Columns of Question 47: What_are_any_barriers_that_make_it_hard_to_identify_community_health_needs?
+  mutate(barriers_hneeds      = coalesce (barriers_hneedse,     barriers_hneedsh))                                        %>% 
+       
+  #Merging Hausa and English Columns of Question 48: Who_in_the_community_are_you_able_to_provide_services_to?  
+  mutate(provide_ser_pwomen   = coalesce (provide_ser_pwomene,  provide_ser_pwomenh))                                     %>%
+  mutate(provide_ser_women    = coalesce (provide_ser_womene,   provide_ser_womenh))                                      %>%
+  mutate(provide_ser_child    = coalesce (provide_ser_childe,   provide_ser_childh))                                      %>%
+  mutate(provide_ser_adoles   = coalesce (provide_ser_adolese,  provide_ser_adolesh))                                     %>%
+  mutate(provide_ser_men      = coalesce (provide_ser_mene,     provide_ser_menh))                                        %>%
+  mutate(provide_ser_elderse  = coalesce (provide_ser_elderse,  provide_ser_eldersh))                                     %>%
+  mutate(provide_ser_others   = coalesce (provide_ser_otherse,  provide_ser_othersh))                                     %>%
+  mutate(provide_ser_wother   = coalesce (provide_ser_wothere,  provide_ser_wotherh))                                     %>%
+ 
+ 
+  #Merging Hausa and English Columns of Question 49: Are_you_able_to_co_design_implement_and_report_on_health_promotion_activities_in_your_community?  
+  mutate(codesgn_implmt   = coalesce (codesgn_implmte,   codesgn_implmth))                                                %>%
+ 
+
+  # # recoding for codesgn_implmt 
+  mutate(codesgn_implmt  = recode(codesgn_implmt ,    # recode column values
+                                  #Old                             =  New
+                                  "Eh"                             =  "Yes",
+                                  "A'a"                            =  "No"))                 %>%
+  
+  #Merging Hausa and English Columns of Question 50: Are_there_additional_services_that_you_can_or_would_be_willing_to_provide_if_you_had_the_opportunity_and_the_resources?  
+  mutate(add_ser_willing   = coalesce (add_ser_willinge,   add_ser_willingh))                                             %>%
+  mutate(add_ser_wser      = coalesce (add_ser_wsere,      add_ser_wserh))                                                %>%
+  mutate(add_ser_whyn      = coalesce (add_ser_whyne,      add_ser_whynh))                                                %>%
+  
+  
+
+  #Merging Hausa and English Columns of Question 51: Are_there_any_types_of_health_services_that_you_think_fall_outside_your_role?  
+  mutate(type_hcser_orol    = coalesce (type_hcser_orole,    type_hcser_orolh))                                           %>%
+  mutate(type_hcser_whser   = coalesce (type_hcser_whsere,   type_hcser_whserh))                                          %>%
+  mutate(type_hcser_why     = coalesce (type_hcser_whye,     type_hcser_whyh))                                            %>%
+  
+  
+  
+  # # recoding for additional services TBAS are willing to do
+  mutate(add_ser_willing = recode(add_ser_willing,    # recode column values
+                                 #Old                             =  New
+                                 "Eh"                             =  "Yes",
+                                 "A'a"                            =  "No"))                 %>%
+
+# # recoding  for health services TBAs think are outside their role
+mutate(type_hcser_orol = recode(type_hcser_orol,    # recode column
+                               #Old                           =  New 
+                               "Eh"                           =  "Yes",
+                               "A'a"                          =  "No"))                 %>%
+
+# # recoding  where TBAs offer services
+mutate(services_offer = recode(services_offer,    # recode column
+                             #Old                            =  New 
+                         "A asibiti"                         =  "At the Health Facility",
+                         "A gida"                            =  "At home",
+                         "Duka biyu (gida da asibiti)"       =  "Both"))                 %>%
+  
+
+
+ 
+  # # re-code tier of HF
+  mutate(hf_tier                     = recode(hf_tier, # recode
+                                              #             #OLD                       =        NEW
+                                              "Asibitin Firamare Healthcare"              =  "Primary Healthcare Centre",
+                                              "Asibitin Sekandare Healthcare/ General"         =  "Secondary Healthcare Centre",
+                                              "Asibitin Tertiary Healthcare/ Babbar Asibiti"        =  "Tertiary Healthcare Centre"
+  )) %>% 
+  
+  mutate(hf_type                          = recode(hf_type , # recode
+                                                   #             #OLD                       =        NEW
+                                                   "Asibitin Gwamnati"               = "Public/Government",
+                                                   "Asibitin Kudi (Private)"         =  "Private"
+  )) %>% 
+  
+  mutate(education            = recode(education,
+                                       #             #OLD                       =        NEW
+                                       "Ban yi karatun zamani ba"              =  "No formal education",
+                                       "Takardar shedar gama firamare"         =  "Primary school certificate",
+                                       "Takardar shedar gama sakandare"        =  "Secondary school certificate",
+                                       "Takardar shedar gama makarantar lafiya da Unguwar Zoma" = "school of hygiene and their likes",
+  
+ #mutate(hf_type                          = recode(hf_type , # recode
+                         #             #OLD                       =        NEW
+                                "Asibitin Gwamnati"               = "Public/Government",
+                                "Asibitin Kudi (Private)"         =  "Private"                                    
+  
+                                                                            )) %>% 
+  # filter eg confirmed cases only
+  #filter(col_name == "x") %>% 
+   # create years of service category column
+  mutate(service_yrs_cat = age_categories(         # create new column
+    service_years,                              # numeric column to make groups from
+    lower = 0,
+    upper = 44,
+    by    = 6)) %>% 
+  # create age category column
+  mutate(age_cat = age_categories(         # create new column
+    age,                              # numeric column to make groups from
+    lower = 20,
+    upper = 80,
+    by    = 10)) %>% 
+  # create age category column
+  mutate(age_cat2 = age_categories(         # create new column
+    age,                              # numeric column to make groups from
+    lower = 20,
+    upper = 80,
+    by    = 20)) %>% 
+  # create category column for ward and settlements covered
+  mutate(sett_cover_cat = age_categories(    # create new column
+    settlement_cover,                           # numeric column to make groups from
+    lower = 0,
+    upper = 25,
+    by    = 5 )) %>% 
+  mutate(ward_cover_cat = age_categories(    # create new column
+    wards_cover,                         # numeric column to make groups from
+    lower = 0,
+    upper = 11,
+    by    = 3 )) %>% 
+  
+  # properly record missing values in many character columns
+  mutate(across(
+    .cols = where(is.character),
+    .fns  = na_if, "")) %>%
+  
+  # re-arrange columns
+  select(age,
+         age_cat,
+         state,
+         lga,
+         ward,
+         settlement,
+         education,
+         service_years,
+         services_offer,
+         wards_cover,
+         ward_cover_cat,
+         settlement_cover,
+         sett_cover_cat,
+         hf_tier,
+         hf_type,
+         starts_with("travel_work"),
+         starts_with("prefer_travel"),
+         starts_with("barriers_ser"),
+         starts_with("skills_"),
+         starts_with("hh_rout"),
+         starts_with("add_"),
+         starts_with("type_hcser"),
+         codesgn_implmt,
+         will_add_train,
+         starts_with("doc_ser"),
+         barriers_hneeds,
+         starts_with("learn_chneeds"),
+         health_needs_comm,
+         starts_with("provide_ser"),
+         everything())
+```
+
+
+
+# Summary
+
+- Data collection ongoing (day 14)
+- 621 submissions so far
+- preliminary analysis below
+
+# Results
+## Qualitative Data Summary
+### Introduction
+Results from the summary of the recently concluded Focus Group Discussion (FGD) done among inhabitants of security compromised settlements in Niger and Katsina State. Summary of results are discussed below. Three groups of community members were selected based on a predetermined criteria in 3 local government areas in Niger and 3 local government areas in Katsina State.
+
+##Female Caregivers FGD
+The female caregivers mostly agreed that the TBAs play prominent roles in their communities especially before delivery. They ensure that pregnant women are advised to go for antenatal care services. During delivery, they help to take delivery and cut umbilical cord, clean up the baby, as well the mother. “Even if the mother can do that, she might not have the strength to carry out these activities effectively on of them said”. While two of the respondents added that the TBAs mostly have the contact of the health workers who they call in case of complications and as well referral of caregivers for antenatal care.
+Most of the of the respondent said that they do not have access to healthcare and health facilities in their communities. They further added that most of their facilities are now closed due to the insecurity which is now ravaging their communities. In addition to that, the healthcare workers find it difficult to come to the facilities, and even when they want to, they are sometimes attacked or kidnapped on their way to the communities. While one of the respondents stated that they have health facilities which can be said to be partially functional since Health workers no longer visit the facilities as they remain easy target for the bandits. And the issue of banditry is now on the increase, as such, the time they would be attacked cannot be ascertained.
+Most of the respondents pointed out that there are no medical doctors/Nurses that can attend to their needs. Only minor ailments such as Malaria, cuts that are treated in a handful of health facilities. One of them mentioned "caregivers usually come into Kurfi town to get major treatments for their illness".
+All the respondents agreed, the major challenge they face in their various communities is insecurity. Because it is insecurity that makes health workers not to go to the Health Facilities and discharge their duties effectively, nor for midwives to be available to take deliveries. This has affected the health services generally and thus “they have witnessed increased maternal and child mortality”. One of the respondents said due to the security challenges they have resorted to keeping different drugs at home. Whenever the come to town, they get a nearby medicine vendor/pharmacy and purchase these medications which they keep just in case of an emergency. They said “ they might not have opportunities to go out of the settlements later” so they resort to self-medication most times.
+They stressed the most neglected health issue is lack of free drugs they can use to treat common ailments. All the respondents agreed that all health needs are presently neglected. Presently, no immunization activities are taking place, even the SIAs because personnel are mostly not comfortable going into the communities. However, a times these drugs are being given to the community leader who sometimes goes house to house to do the distribution. So, all the respondents agreed that all health needs are presently neglected due to insecurity and inability to access their various settlements.
+
+\pagebreak
+
+## Traditional Birth Attendants (TBAs)
+Most of the respondents talked about how they support pregnant mothers to maintain good health both physically and psychologically through regular ANC visit, good nutrition. They teach the art of childcare, support the conduct of labour, delivery, initiation of lactation and breastfeeding, and referral services in cases of abnormal labour.
+All the TBAs testified that their communities received their services without rejection. At times, the caregivers shower them with gifts of appreciation. Most of the respondents were of the opinion that” their work can never be over emphasized” owing to the fact that the community members are being assisted during hard times (security challenges). Health care delivery during this time is not easily accessible. For that reason, TBAs are always there to assist, thereby reducing morbidity and mortality rate among pregnant women and women of childbearing age.
+Most of the challenges faced by the TBAs were not connected to the issues related to ignorance and taboo. Insecurity poses the greatest threat to successful implementation of TBAs activities in their domains. Most of the cases requiring referral for expert management cannot be made for the same reason. Moreover, there is training gap that needs to be bridged for effective service delivery.
+TBAs engage in continuous house-to-house mobilization, being used as a strategy to sensitize care givers on the importance of health care. Also, they advocate for the political office holders to deploy security operatives in all security compromised areas to avert fear on banditry. While some are of the opinion that deployment of vigilante will yield a better result. They believe capacity building and training should be done at regular interval to curtail the issue of knowledge deficit from most of the TBAs.
+The TBAs were able to illuminate on a few dangers of pregnancy. They include anaemia, oedema, severe malaria, bleeding. Others also stressed severe headache and sexually transmitted infectious are dangerous. They added that continuous mobilization on the need for regular ANC visit is the key to address the complications. They are able to detect abnormal presentation, prolonged labor, postpartum heamorrhage, cephalopelvic disproportion, cervical distortia etc. During their conduct of labor. “In case of any problem related to the above we have no option than to refer immediately” says one of the TBAs.
+The TBAs can provide other health services in the community. These include, good nutrition, good personal and environmental hygiene, food hygiene, health education, and referral services. They believe maternal and child morbidity rate can be decreased by means of good referral system in the community. The TBAs believe malaria, diarrhoea, scabies, dental caries, periodontitis, and typhoid fever are some of the most neglected and serious health needs in their communities. Health education to obtain positive behaviour change, increased commitment by the government in providing functional health care facilities, essential drugs, and deployment of qualified medical personnel are some of the few things they think can reduce the burden of these diseases in their communities.
+
+\pagebreak
+
+## Community Leaders
+All the respondents agreed that challenge of insecurity affects all their community; cattle rustling, kidnaped for ransom, and killing community members during their day-to-day activities, especially when going to farm. Some of these communities were attacked, and a large number of them had to leave their homes and live a displaced life like a refugee. Others that stayed to avoid living like beggars in the town are not enjoying the provision of basic healthcare due to the fact that the health workers are afraid to go and render health services to those communities because of bandits. One of them said “if anybody gets kidnapped, only his family will pay for the ransom.
+The community leaders support the community during these trying times by working with the local vigilante to escort those that are critically ill or need to be referred to the nearest healthcare.
+The community leaders all agree that the most neglected medical conditions in their communities include malaria, typhoid, whooping cough, waist pain and other musculoskeletal diseases.
+They usually assist TBAs financially in their communities, or sometimes give them some incentive to motivate them to continue doing their jobs. Some of the community leaders have vigilante operating under them, so they send the vigilante to escort the TBAs to unstable areas during referral.
+These are some of the functions TBAs do in their communities, assisting women for delivery, taking care of women after delivery (post-natal care), taking care of the baby, referral of complications to either mother or the child, referral for Immunization, and traditional curative care.
+Finally they all solicit support from the government and this organization to help them and train their TBAs and give them support to continued helping them technically to reduce the number of maternal death and neonatal death in their communities because other trained healthcare workers will not come as long as there is insecurity.
+
+## Quantitative Data
+### Sociodemographic characteristics
+- We interviewed 621 Traditional Birth Attendants (TBAs) of which 100% are all females.
+- They have a Median age of 45, 35 – 52 (IQR).
+- 51% (313) of the TBAs are within the age group 40 - 59 years.
+- 52% (324) of the TBAs have not had any formal education, 53% (250) and 50% (74) of TBAs in Katsina and Niger State respectively.
+- As shown in table 1 below.
+
+# Sociodemographic Characteristics of TBAs in Niger and Katsina State
+
+```{r  Sociodemoxteristics, echo= FALSE}
+tba %>%
+  select(age,age_cat,age_cat2, education, lga, state) %>%
+  tbl_summary(
+    by = state,
+    label = list(age ~ "Age",age_cat ~ "Age Category", age_cat2 ~ "Age Category2", education ~ "Level of Education", lga ~ "Local Government Area"),
+type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c("{median} ({p25}, {p75})", "{min}, {max}"),
+    missing = "ifany",
+    missing_text = "Missing") %>% 
+modify_caption("**Sociodemographic Characteristics**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+  add_n() %>% 
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)") #%>% 
+```
+```{r AgeStatePyramid, echo = FALSE}
+tba %>%                    # Dataset piped into apyramid
+  age_pyramid(
+    age_cat,                   # The age category of cases
+    state,           # Split by the gender
+    proportional = TRUE,       # To show as percentages of total cases
+    show_midpoint  = FALSE) +    # remove guide line for mid-point
+  # set theme to basic 
+  theme_minimal() +
+  
+  labs(title    =  "Age and State Distribution of TBAs in Niger and Katsina State", #adding labels
+       subtitle =  ,
+       x        =  "Age group" ,
+       y        =  "Percent of total",
+       fill     =  "State",
+       caption  =  "8 Missing Values Excluded"
+  )
+
+```
+
+## Age category for each state
+
+```{r  ageCategorybystate, echo= FALSE}
+tba %>%
+  drop_na(age_cat) %>% # Dataset piped into ggplot
+ ggplot(
+    aes(
+      age_cat,
+      fill = state
+    )) +
+  geom_bar(
+    position = "dodge"
+    
+  ) +
+  #scale_fill_grey(start = 0, end = 1) +
+  facet_grid(
+    state ~ .
+  ) +
+  theme_minimal() +
+  
+  labs(title    =  "Age and State Distribution of TBAs in Niger and Katsina State", #adding labels
+       subtitle =  ,
+       x        =  "Age group" ,
+       y        =  "Frequency",
+       fill     =  "State",
+       caption  =  "8 Missing Values Excluded"
+  )
+```
+
+
+```{r ageCategoryState, echo=FALSE}
+ggplot(tba %>% drop_na(age_cat)) + 
+  geom_bar(aes(y = fct_rev(age_cat), fill = state), width = 0.7) +
+  theme_minimal()+
+  theme(legend.position = "bottom") +
+  labs(title = "Age Category by State",
+       y = "Age Category",
+       x = "Frequency")
+```
+
+
+```{r ageCategoryStatetwo, echo=FALSE}
+ggplot(tba %>% drop_na(age_cat2)) + 
+  geom_bar(aes(y = fct_rev(age_cat2), fill = state), width = 0.8) +
+  theme_minimal()+
+  theme(legend.position = "bottom") +
+  labs(title = "Age Category by State",
+       y = "Age Category",
+       x = "Frequency")
+```
+
+\pagebreak
+
+# TBA Services
+
+- The TBAs interviewed had a median years of service of 6, 4 - 12 (IQR) in both states.
+- 45% of the TBAs have 0-5 years of service.
+- 73% Provide only home services, while 6.5% (40) provide their services at only health facilities. However, 21% (127) provide their services in both.
+- 98% (164) of the TBAs provide their services in public  health facilities owned by the government, and 90% (150) of them provide their services in primary health care centres.
+- As shown in table 2 below.
+
+```{r tbaServicesChildren, echo= FALSE}
+tba %>%
+  select(service_years, service_yrs_cat, services_offer, hf_type, hf_tier, state) %>%
+  tbl_summary(
+    by = state,
+    label = list(services_offer ~ "Where TBAs Offer Services", service_years ~ "Years of Service", service_yrs_cat ~ "Category of Years of Service", hf_tier ~ "Tier of Health Facility", hf_type ~ "Type of Health Facility" ),
+    missing = "ifany",
+    missing_text = "No Response") %>% 
+modify_caption("**TBA Services and Coverage**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+  add_n() %>% 
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+``` 
+
+#Years of Service Category by State
+
+```{r YearsTbaService, echo= FALSE}
+tba %>% 
+  #drop_na(service_yrs_cat) %>% 
+ ggplot(
+    aes(
+     state,
+      fill = state
+    )) +
+  labs(
+    title = "TBA Years of Service in Katsina and Niger State",
+    x     = "State",
+    y     = "Frequency"
+  ) +
+  geom_bar(
+    position = "dodge"
+    
+  ) +
+  theme_minimal() +
+  facet_wrap(
+    . ~ service_yrs_cat
+  )
+```
+
+# Settlements covered by TBAs in Niger and Katsina State
+
+```{r SettlementsandWards, echo=FALSE}
+tba %>%
+  select(settlement_cover, sett_cover_cat, wards_cover, ward_cover_cat, state) %>%
+  tbl_summary(
+    by = state,
+    label = list(settlement_cover ~ "Settlements Covered", sett_cover_cat ~ "Settlements Covered by TBAs", wards_cover ~ " No Wards Covered", ward_cover_cat ~ "Wards Covered Group" ),
+type = all_continuous() ~ "continuous2",
+    statistic = all_continuous() ~ c("{median} ({p25}, {p75})"),
+    missing = "ifany",
+    missing_text = "Missing") %>% 
+modify_caption("**Settlements and Wards Covered by the TBAs**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+  add_n() %>% 
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)"
+  )
+```
+
+# How TBAs Travel for Work and their preference for travel to other neighborhoods
+```{r tbasTravelandPreference, echo=FALSE}
+ tba %>% 
+  select(travel_work_pcar,
+         travel_work_ccar,
+         travel_work_bike,
+         travel_work_walk,
+         travel_work_mtrc,
+         prefer_travel,
+         state) %>% 
+  tbl_summary(
+    by      = state,
+    percent = "column",
+    label   = c(
+              travel_work_ccar ~ "Commercial Vehicle",
+              travel_work_pcar ~ "Private Car",
+              travel_work_walk ~ "Walking",
+              travel_work_mtrc ~ "Motorcycle",
+              travel_work_bike ~ "Bicycle",
+              prefer_travel    ~ "Prefer to Travel to other Neighborhoods"),
+   missing = "ifany",
+    missing_text = "Missing") %>% 
+modify_caption("**How TBAs go to work by in Niger**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+\pagebreak
+
+#Skills and Training
+## 14. How did you acquire your TBA skills?
+```{r acquireTbaSkills, echo=FALSE}
+ tba %>% 
+  select(skills_other_tba, skills_family, skills_school, skills_other, state) %>% 
+  tbl_summary(
+    by      = state,
+    percent = "column",
+    label   = list(
+              skills_other_tba ~ "Another TBA", 
+              skills_family ~ "Family", 
+              skills_school ~ "School", 
+              skills_other  ~ "Other"),
+   missing = "ifany",
+    missing_text = "Missing") %>% 
+modify_caption("**How TBAs acquired their skills**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+
+## 15. Have you had additional capacity building/training opportunities to improve your skills?
+
+```{r additionalCapacityBuldingOpps, echo=FALSE}
+ tba %>% 
+  select(add_train_cb, 
+         add_train_when,
+         add_train_no_y,
+         state) %>% 
+  tbl_summary(
+    by      = state,
+    percent = "column",
+    label   = c(
+              add_train_cb ~ "Had Additional Capacity Building/Training Opportunity?",
+              add_train_when ~ "If Yes, When did you attend the training?",
+              add_train_no_y ~ "If No, Why?"),
+   missing = "no",
+    missing_text = "Missing") %>% 
+modify_caption("**Opportunity for Additional Capacity Building/Training**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>%
+  modify_header(label = "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+## 16. Would you be willing to take on additional trainings should you be given the opportunity?
+
+```{r  WillingtoTakeAddTrain, echo= FALSE}
+tba %>%
+  select(will_add_train, state) %>%
+  tbl_summary(
+    by = state,
+    label = list(will_add_train ~ "Willing to take additional training"),
+    missing = "ifany",
+    missing_text = "Missing") %>% 
+modify_caption("**TBAs willingness to take on additional training given the opportunity**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+  add_n() %>% 
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)") #%>% 
+```
+
+\pagebreak
+
+# TBA Maternal and Child Services
+## 17. Who in the household reaches out to you for your services?
+
+```{r  WhoReachesOut, echo= FALSE}
+tba %>%
+  select(hh_rout_pwoman, hh_rout_pwhsbnd, hh_rout_pwmoinlw,hh_rout_othr, state) %>%
+  tbl_summary(
+    by = state,
+    label = list(hh_rout_pwoman   ~ "Pregnant Woman", 
+                 hh_rout_pwhsbnd  ~ "Pregnant Woman's Husband", 
+                 hh_rout_pwmoinlw ~ "Pregnant Woman's Mother-in-law",
+                 hh_rout_othr     ~ "Other"),
+    missing = "ifany",
+    missing_text = "Missing") %>% 
+modify_caption("**The People in the Households that Reach Out to TBAs for their services**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)") #%>%
+```
+
+## 18. How do you document the services you provide to women?
+
+```{r  Documentation, echo= FALSE}
+tba %>%
+  select(doc_ser_notebook, doc_ser_hospcrd, doc_ser_dnt_doc, state) %>%
+  tbl_summary(
+    by = state,
+    label = list(doc_ser_notebook ~ "In a notebook", 
+                 doc_ser_hospcrd ~ "In patient's hospital card", 
+                 doc_ser_dnt_doc ~ "I don't document"),
+    missing = "no",
+    missing_text = "Missing") %>% 
+modify_caption("**How TBAs document the services they provide women**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+  add_n() %>% 
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+## 19. When do you first make contact with pregnant women?
+
+```{r Contactpw, echo= FALSE}
+tba %>%
+  select(fcontact_pw_1tm, fcontact_pw_2tm, fcontact_pw_3tm, fcontact_pw_dl, fcontact_pw_ab, fcontact_pw_bp, fcontact_pw_ta, fcontact_pw_o, state) %>%
+  tbl_summary(
+    by = state,
+    label = list(fcontact_pw_1tm ~ "First Trimester",
+                 fcontact_pw_2tm ~ "Second Trimester", 
+                 fcontact_pw_3tm ~ "Third Trimester", 
+                 fcontact_pw_dl  ~ "During Labor", 
+                 fcontact_pw_ab  ~ "After birth", 
+                 fcontact_pw_bp  ~ "Before Pregnancy", 
+                 fcontact_pw_ta  ~ "At the time of abortion", 
+                 fcontact_pw_o   ~ "Other"),
+    missing = "ifany",
+    missing_text = "Missing") %>% 
+modify_caption("**When TBAs first make contact with pregnant women in Niger and Katsina State**") %>%
+  bold_labels() %>% 
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+
+## 31. What services do you render children under 5 years
+
+```{r TbaServicestoUnderfive, echo= FALSE}
+
+tba %>% 
+  drop_na(ser_u5_imm) %>% 
+select(ser_u5_imm,
+ser_u5_act,
+ser_u5_ors,                     
+ser_u5_maln,     
+ser_u5_cxi,
+ser_u5_vita,                                        
+ser_u5_grwth,                                    
+ser_u5_other,
+state) %>% 
+  tbl_summary(
+    by           = state,
+    percent      = "column",
+    label        = c(
+                   ser_u5_imm   ~  "Immunization" ,
+                   ser_u5_act   ~  "Malaria Treatment",
+                   ser_u5_ors   ~  "Treatment for Diarrhoea and ORS",                     
+                   ser_u5_maln  ~  "Treatment for Malnutrition",     
+                   ser_u5_cxi   ~  "Treatment of Chest Infections with Abx",
+                   ser_u5_vita  ~  "Vitamin A Supplementation",                                        
+                   ser_u5_grwth ~  "Growth Monitoring with Growth Chart",                                    
+                   ser_u5_other ~  "Other"),
+    missing      = "ifany",
+    missing_text = "No Response") %>% 
+  modify_caption("**Services TBAs provide to Under 5 Children**") %>%
+  italicize_labels() %>% 
+  italicize_levels() %>%
+  bold_labels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+## 32. How do you counsel women on postpartum care?
+
+```{r counselWomenPPcare, echo= FALSE}
+tba %>% 
+select(ser_u5_imm,
+ser_u5_act,
+ser_u5_ors,                     
+ser_u5_maln,     
+ser_u5_cxi,
+ser_u5_vita,                                        
+ser_u5_grwth,                                    
+ser_u5_other,
+state) %>% 
+  tbl_summary(
+    by           = state,
+    percent      = "column",
+    label        = c(
+                   ser_u5_imm   ~  "Immunization" ,
+                   ser_u5_act   ~  "Malaria Treatment",
+                   ser_u5_ors   ~  "Treatment for Diarrhoea and ORS",                     
+                   ser_u5_maln  ~  "Treatment for Malnutrition",     
+                   ser_u5_cxi   ~  "Treatment of Chest Infections with Abx",
+                   ser_u5_vita  ~  "Vitamin A Supplementation",                                        
+                   ser_u5_grwth ~  "Growth Monitoring with Growth Chart",                                    
+                   ser_u5_other ~  "Other"),
+    missing      = "ifany",
+    missing_text = "No Response") %>% 
+  modify_caption("**Services TBAs provide to Under 5 Children**") %>%
+  italicize_labels() %>% 
+  italicize_levels() %>%
+  bold_labels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+## 33. For what reason do you refer women postpartum?
+
+```{r ReferWomenPP, echo=FALSE}
+tba %>% 
+select(rfrw_pp_ri , rfrw_pp_locn, rfrw_pp_cnvl, rfrw_pp_ebleed, rfrw_pp_fp, rfrw_pp_othr, face_barriers,
+state) %>% 
+  tbl_summary(
+    by           = state,
+    percent      = "column",
+    label        = list(
+                   rfrw_pp_ri     ~ "Routine Immunization", 
+                   rfrw_pp_locn   ~ "Loss of consciousness", 
+                   rfrw_pp_cnvl   ~ "Convulsion", 
+                   rfrw_pp_ebleed ~ "In cases of excessive bleeding", 
+                   rfrw_pp_fp     ~ "Family Planning", 
+                   rfrw_pp_othr   ~ "Other",
+                   face_barriers ~ "Do you face any barriers when referring or treating them?"),
+    missing      = "no") %>% 
+  modify_caption("**Reasons TBAs refer women post-partum**") %>%
+  italicize_labels() %>% 
+  italicize_levels() %>%
+  bold_labels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+## 35. Do you render any form of family planning?
+
+```{r RenderFP, echo=FALSE}
+tba %>% 
+select(family_p, 
+       family_p_inj,
+       family_p_consl,
+       family_p_condm,
+       family_p_pills,
+       family_p_hblmx,
+       family_p_other,
+state) %>% 
+  tbl_summary(
+    by           = state,
+    percent      = "column",
+    label        = c(
+                   family_p   ~  "Do you render any forms of family planning?" ,
+                   family_p_inj   ~  "Injection",
+                   family_p_consl   ~  "Exclusive Breastfeeding",                     
+                   family_p_condm  ~  "Use of Condom",     
+                   family_p_pills  ~  "Oral Contraceptive pills",
+                   family_p_hblmx  ~  "Herbal Mixture",                                        
+                   family_p_other ~  "Other"),
+    missing      = "no") %>% 
+  modify_caption("**Forms of Family Planning the TBAs Render**") %>%
+  italicize_labels() %>% 
+  italicize_levels() %>%
+  bold_labels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+# 36. Do you get paid for the services rendered?
+
+```{r GetPaid, echo=FALSE}
+tba %>% 
+select(get_paid_ser, 
+       get_paid_how,
+       get_paid_soon,
+state) %>% 
+  tbl_summary(
+    by           = state,
+    percent      = "column",
+    label        = c(
+                   get_paid_ser   ~  "Do you get paid for the services rendered?" ,
+                   get_paid_how   ~  "If yes, how do you get paid?",
+                   get_paid_soon   ~  "If yes, how soon do you get paid after rendering your services?"),
+    missing      = "no") %>% 
+  modify_caption("**How TBAs get paid for the services rendered**") %>%
+  italicize_labels() %>% 
+  italicize_levels() %>%
+  bold_labels() %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+\pagebreak
+
+## TBA Barriers to transport
+```{r  TbaBarrierstoTransport, echo= FALSE}
+tba %>% 
+  drop_na(barriers_ser_trans) %>% 
+select(
+barriers_ser_trans,
+barriers_ser_afdt,
+barriers_ser_loc,                     
+barriers_ser_inadtim,     
+barriers_ser_dmkrabs,
+barriers_ser_dmkrnta,                                        
+barriers_ser_tbaper,                                    
+barriers_ser_tbasc,
+barriers_ser_tbaps,
+barriers_ser_others,
+barriers_ser_norms,
+state) %>% 
+  tbl_summary(
+  by           = state,
+    percent      = "column",
+    label        = list(
+                   barriers_ser_trans     ~ "Lack of Transport Means",
+                   barriers_ser_afdt      ~ "Unaffordability if Transportation",
+                   barriers_ser_loc       ~ "Inability to Locate the Target Household",                     
+                   barriers_ser_inadtim   ~ "inadequate Time to Reach Households",     
+                   barriers_ser_dmkrabs   ~ "Decision Maker not Present",
+                   barriers_ser_dmkrnta   ~ "Decision Maker did not Allow",                                        
+                   barriers_ser_tbaper    ~ "TBA Needs Permission to Travel",                                    
+                   barriers_ser_tbasc     ~ "Security Concerns by TBA Household",
+                   barriers_ser_tbaps     ~ "TBAs Concern for Own Personal Health",
+                   barriers_ser_others    ~ "Others",
+                   barriers_ser_norms     ~ "Sociocultural Norms"),    
+   missing      = "ifany",
+   missing_text = "No Response")%>% 
+  modify_caption("**Table 1. Barriers to TBAs Providing Services**") %>%
+  italicize_labels() %>% 
+  italicize_levels() %>% 
+  bold_labels()      %>% 
+  modify_header(label ~ "**Variable**") %>% 
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Number of TBAs**") %>% 
+  add_overall() %>%
+   modify_footnote(
+    all_stat_cols() ~ "Frequency (%)")
+```
+
+
